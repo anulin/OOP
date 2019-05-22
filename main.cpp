@@ -22,10 +22,10 @@ using namespace std;
 */
 
 // Function object for solving LCA problem
-class LCA{
+class LCAFinder {
 public:
     // Builds and pre-processes tree using vector where i-th index stores father of i-th node
-    LCA(vector<vector<unsigned>>& parents);
+    LCAFinder (const vector<vector<unsigned>>& parents);
 
     // Returns LCA
     unsigned operator()(unsigned a, unsigned b);
@@ -46,7 +46,7 @@ private:
     unsigned _l;
 
     // Stores children for i-th node
-    vector<vector<unsigned>>& _tree;
+    const vector<vector<unsigned>>& _tree;
     // Time of visiting i-th node
     vector<unsigned> _tin;
     // Time of leaving i-th node
@@ -58,21 +58,21 @@ private:
 /******************************************************************************/
 
 // Function object for generating next query
-class NextQuery{
+class QueryGenerator {
 public:
-    NextQuery(unsigned a0,
+    QueryGenerator (unsigned a0,
               unsigned b0,
               unsigned long x,
               unsigned long y,
               unsigned long z,
               unsigned n);
 
-    pair<unsigned, unsigned> operator()(unsigned result);
+    pair<unsigned, unsigned> next(unsigned result);
 
 private:
     unsigned _a;//вершина запроса 1
     unsigned _b;//вершина запроса 2
-    unsigned long _x;//для генерации следующего запроса
+    unsigned long _x;//для генерации следующего запроса:  (_a * _x + _b * _y + _z) % number_of_vertices
     unsigned long _y;//для генерации следующего запроса
     unsigned long _z;//для генерации следующего запроса
     unsigned number_of_vertices;
@@ -100,14 +100,14 @@ int main() {
     unsigned long y = 0;
     unsigned long z = 0;
     cin >> x >> y >> z;
-    NextQuery nextQuery(a0, a1, x, y, z, n);
+    QueryGenerator  nextQuery(a0, a1, x, y, z, n);
 
     // Generating LCA object
-    LCA lca(parents);
+    LCAFinder  lca(parents);
     unsigned long ans = 0;
     unsigned result = 0;
     for (unsigned i = 0; i < m; i++) {
-        result = lca(nextQuery(result));
+        result = lca(nextQuery.next(result));
         ans += result;
     }
     cout << ans;
@@ -117,21 +117,21 @@ int main() {
 
 
 
-LCA::LCA(vector<vector<unsigned>>& parents)
-        : _tree(parents)
-        , _n(parents.size())
-        , _l(static_cast<unsigned>(ceil(log2(_n))))
-        , _tin(_n)
-        , _tout(_n)
-        , _ancestors(_n, vector<unsigned>(_l + 1))
-        , _timer(0)
+LCAFinder::LCAFinder (const vector<vector<unsigned>>& parents):
+        _tree(parents),
+        _n(parents.size()),
+        _l(static_cast<unsigned>(ceil(log2(_n)))),
+        _tin(_n),
+        _tout(_n),
+        _ancestors(_n, vector<unsigned>(_l + 1)),
+        _timer(0)
 {
     DFS(0, 0);
 }
 
 
 
-unsigned LCA::operator()(unsigned a, unsigned b)
+unsigned LCAFinder ::operator()(unsigned a, unsigned b)
 {
     if (isAncestor(a, b))
         return a;
@@ -146,14 +146,14 @@ unsigned LCA::operator()(unsigned a, unsigned b)
 
 
 
-unsigned LCA::operator()(pair<unsigned, unsigned> query)
+unsigned LCAFinder ::operator()(pair<unsigned, unsigned> query)
 {
-    return LCA::operator()(query.first, query.second);
+    return LCAFinder ::operator()(query.first, query.second);
 }
 
 
 
-void LCA::DFS(unsigned node, unsigned parent)
+void LCAFinder ::DFS(unsigned node, unsigned parent)
 {
     _tin[node] = _timer++;
     _ancestors[node][0] = parent;
@@ -169,30 +169,30 @@ void LCA::DFS(unsigned node, unsigned parent)
 
 
 
-bool LCA::isAncestor(unsigned a, unsigned b)
+bool LCAFinder ::isAncestor(unsigned a, unsigned b)
 {
     return _tin[a] <= _tin[b] && _tout[b] <= _tout[a];
 }
 
 
 
-NextQuery::NextQuery(unsigned a0,
+QueryGenerator ::QueryGenerator (unsigned a0,
                      unsigned b0,
                      unsigned long x,
                      unsigned long y,
                      unsigned long z,
-                     unsigned n)
-        : _a(a0)
-        , _b(b0)
-        , _x(x)
-        , _y(y)
-        , _z(z)
-        , number_of_vertices(n)
+                     unsigned n):
+        _a(a0),
+        _b(b0),
+        _x(x),
+        _y(y),
+        _z(z),
+        number_of_vertices(n)
 {}
 
 
 
-pair<unsigned, unsigned> NextQuery::operator()(unsigned result)
+pair<unsigned, unsigned> QueryGenerator ::next(unsigned result)
 {
     pair<unsigned, unsigned> ans((_a + result) % number_of_vertices, _b);
     _a = (_a * _x + _b * _y + _z) % number_of_vertices;
